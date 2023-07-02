@@ -7,7 +7,7 @@ const rentalSchema = new mongoose.Schema({
       name: {
         type: String,
         requires: true,
-        minlength: 5,
+        minlength: 3,
         maxlength: 50,
       },
       isGold: {
