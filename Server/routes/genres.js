@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const Joi = require("joi");
+const auth = require("../middleware/auth");
 const { Genre, validate } = require("../models/genres");
 
 const router = express.Router();
@@ -10,7 +11,7 @@ router.get("/", async (req, res) => {
   res.send(genres);
 });
 
-router.post("/", async (req, res) => {
+router.post("/", auth, async (req, res) => {
   const nameAlreadyPresent = await Genre.find({
     name: req.body.name,
   }).select({
@@ -27,7 +28,7 @@ router.post("/", async (req, res) => {
   res.send(genre);
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", auth, async (req, res) => {
   const nameAlreadyPresent = await Genre.find({
     name: req.body.name,
   }).select({
@@ -49,7 +50,7 @@ router.put("/:id", async (req, res) => {
   res.send(genre);
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", auth, async (req, res) => {
   const genre = await Genre.findByIdAndRemove(req.params.id);
   // const genre = genres.find((c) => c.id === parseInt(req.params.id));
   if (!genre)
