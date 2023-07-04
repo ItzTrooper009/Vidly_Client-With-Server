@@ -5,7 +5,7 @@ const Joi = require("joi");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const config = require("config");
-const { User, validate } = require("../models/users");
+const { User } = require("../models/users");
 
 const router = express.Router();
 
@@ -14,24 +14,25 @@ router.post("/", async (req, res) => {
   if (error) return res.status(400).send(error.details[0].message);
 
   let user = await User.findOne({ email: req.body.email });
-  if (user) return res.status(400).send("User already there with given id...");
+  if (!user) return res.status(400).send("Invalid Email or Password.");
 
-  user = new User(_.pick(req.body, ["name", "email", "password"]));
-
-  const salt = await bcrypt.genSalt(10);
-  const hashed = await bcrypt.hash(req.body.password, salt);
-
-  user.password = hashed;
-
-  user = await user.save();
+  const validPassword = await bcrypt.compare(req.body.password, user.password);
+  if (!validPassword) return res.status(400).send("Invalid Email or Password.");
 
   const token = jwt.sign(
     { _id: user._id, name: user.name, email: user.email },
     config.get("jwtPrivateKey")
   );
-  res
-    .header("x-auth-token", token)
-    .send(_.pick(user, ["_id", "name", "email"]));
+
+  res.send(token);
 });
+function validate(req) {
+  const schema = {
+    email: Joi.string().min(3).max(150).required().email(),
+    password: Joi.string().min(3).max(1500).required(),
+  };
+
+  return Joi.validate(req, schema);
+}
 
 module.exports = router;
