@@ -20,7 +20,9 @@ class RegisterForm extends Form {
     try {
       const response = await userService.register(this.state.data);
       auth.loginWithJwt(response.headers["x-auth-token"]);
-      window.location = "/";
+      console.log(response.headers);
+      this.login();
+      // window.location = "/";
     } catch (ex) {
       if (ex.response && ex.response.status === 400) {
         const errors = { ...this.state.errors };
@@ -30,6 +32,20 @@ class RegisterForm extends Form {
     }
   };
 
+  login = async () => {
+    try {
+      const { data } = this.state;
+      await auth.login(data.username, data.password);
+      const { state } = this.props.location;
+      window.location = state ? state.from.pathname : "/";
+    } catch (ex) {
+      if (ex.response && ex.response.status === 400) {
+        const errors = { ...this.state.errors };
+        errors.username = ex.response.data;
+        this.setState({ errors });
+      }
+    }
+  };
   render() {
     return (
       <div>

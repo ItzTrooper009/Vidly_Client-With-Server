@@ -27,7 +27,7 @@ const Rentals = () => {
   }, []);
   return (
     <TableContainer>
-      {console.log(rental)}
+      {/* {console.log(rental)} */}
       <Table sx={{ minWidth: 650 }} aria-label="simple table">
         <TableHead>
           <TableRow sx={{}}>

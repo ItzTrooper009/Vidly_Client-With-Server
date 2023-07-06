@@ -26,7 +26,7 @@ const Customers = () => {
   }, []);
   return (
     <TableContainer>
-      {console.log("Hehehe", customers)}
+      {/* {console.log("Hehehe", customers)} */}
       <Table sx={{ minWidth: 650 }} aria-label="simple table">
         <TableHead>
           <TableRow sx={{}}>

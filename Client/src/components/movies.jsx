@@ -1,186 +1,187 @@
-import React, { Component } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Pagination from "@mui/material/Pagination";
 import MoviesTable from "./moviesTable";
 import ListGroup from "./common/listGroup";
-// import Pagination from "./common/pagination";
 import { getMovies, deleteMovie } from "../services/movieService";
 import { getGenres } from "../services/genreService";
 import { paginate } from "../utils/paginate";
 import _ from "lodash";
-//import SearchBox from "./searchBox";
 import { toast } from "react-toastify";
 import { Button } from "@mui/material";
 import { TextField } from "@mui/material";
-// import auth from "../services/authService";
+import Confirmation from "./common/confirmation";
 
-class Movies extends Component {
-  state = {
-    movies: [],
-    genres: [],
-    currentPage: 1,
-    pageSize: 4,
-    searchQuery: "",
-    selectedGenre: null,
-    sortColumn: { path: "title", order: "asc" },
+const Movies = () => {
+  const [movies, setMovies] = useState([]);
+  const [genres, setGenres] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(5);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedGenre, setSelectedGenre] = useState(null);
+  const [sortColumn, setSortColumn] = useState({
+    path: "title",
+    order: "asc",
+  });
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [movieToDelete, setMovieToDelete] = useState(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      const { data } = await getGenres();
+      const genres = [{ _id: "", name: "All Genres" }, ...data];
+      setGenres(genres);
+
+      const { data: moviesData } = await getMovies();
+      setMovies(moviesData);
+    }
+
+    fetchData();
+  }, []);
+
+  const handleDelete = async (movie) => {
+    setShowConfirmation(true);
+    setMovieToDelete(movie);
   };
 
-  async componentDidMount() {
-    const { data } = await getGenres();
-    const genres = [{ _id: "", name: "All Genres" }, ...data];
-    //console.log(this.state.genres);
-    const { data: movies } = await getMovies();
-    this.setState({ movies, genres });
-  }
-
-  handleDelete = async (movie) => {
-    const originalMovies = this.state.movies;
-    const movies = originalMovies.filter((m) => m._id !== movie._id);
-    this.setState({ movies });
+  const handleConfirmation = async () => {
+    const originalMovies = [...movies];
+    const updatedMovies = originalMovies.filter(
+      (m) => m._id !== movieToDelete._id
+    );
+    setMovies(updatedMovies);
 
     try {
-      await deleteMovie(movie._id);
+      await deleteMovie(movieToDelete._id);
     } catch (ex) {
       if (ex.response && ex.response.status === 404) {
         toast.error("This movie has already been deleted.");
       }
-      this.setState({ movies: originalMovies });
+      setMovies(originalMovies);
     }
+
+    setShowConfirmation(false);
+    setMovieToDelete(null);
   };
 
-  handleLike = (movie) => {
-    const movies = [...this.state.movies];
-    const index = movies.indexOf(movie);
-    movies[index] = { ...movies[index] };
-    movies[index].liked = !movies[index].liked;
-    this.setState({ movies });
+  const handleCancelConfirmation = () => {
+    setShowConfirmation(false);
+    setMovieToDelete(null);
   };
 
-  handlePageChange = (e, page) => {
-    this.setState({ currentPage: page });
+  const handleLike = (movie) => {
+    const updatedMovies = [...movies];
+    const index = updatedMovies.indexOf(movie);
+    updatedMovies[index] = { ...updatedMovies[index] };
+    updatedMovies[index].liked = !updatedMovies[index].liked;
+    setMovies(updatedMovies);
   };
 
-  handleGenreSelect = (genre) => {
-    this.setState({
-      selectedGenre: genre,
-      searchQuery: "",
-      currentPage: 1,
-    });
-    //console.log(this.state.genres);
+  const handlePageChange = (e, page) => {
+    setCurrentPage(page);
   };
 
-  handleSearch = (e) => {
-    this.setState({
-      searchQuery: e.target.value,
-      selectedGenre: null,
-      currentPage: 1,
-    });
+  const handleGenreSelect = (genre) => {
+    setSelectedGenre(genre);
+    setSearchQuery("");
+    setCurrentPage(1);
   };
 
-  handleSort = (sortColumn) => {
-    this.setState({ sortColumn });
+  const handleSearch = (e) => {
+    setSearchQuery(e.target.value);
+    setSelectedGenre(null);
+    setCurrentPage(1);
   };
 
-  getPagedData = () => {
-    const {
-      pageSize,
-      currentPage,
-      sortColumn,
-      selectedGenre,
-      searchQuery,
-      movies: allMovies,
-    } = this.state;
+  const handleSort = (sortColumn) => {
+    setSortColumn(sortColumn);
+  };
 
-    let filtered = allMovies;
-    if (searchQuery)
-      filtered = allMovies.filter((m) =>
-        m.title.toLowerCase().startsWith(searchQuery.toLowerCase())
-      );
-    else if (selectedGenre && selectedGenre._id)
-      filtered = allMovies.filter((m) => m.genre._id === selectedGenre._id);
+  const getPagedData = () => {
+    const filtered = searchQuery
+      ? movies.filter((m) =>
+          m.title.toLowerCase().startsWith(searchQuery.toLowerCase())
+        )
+      : selectedGenre && selectedGenre._id
+      ? movies.filter((m) => m.genre._id === selectedGenre._id)
+      : movies;
 
     const sorted = _.orderBy(filtered, [sortColumn.path], [sortColumn.order]);
+    const paginatedMovies = paginate(sorted, currentPage, pageSize);
 
-    const movies = paginate(sorted, currentPage, pageSize);
-
-    return { totalCount: filtered.length, data: movies };
+    return { totalCount: filtered.length, data: paginatedMovies };
   };
 
-  render() {
-    const { length: count } = this.state.movies;
-    const { pageSize, currentPage, sortColumn, searchQuery } = this.state;
-    const { user } = this.props;
-    //const user = auth.getCurrentUser();
+  const { length: count } = movies;
+  const { totalCount, data: moviesToShow } = getPagedData();
 
-    if (count === 0) return <p>There are no movies in the database.</p>;
+  if (count === 0) return <p>There are no movies in the database.</p>;
 
-    const { totalCount, data: movies } = this.getPagedData();
-
-    return (
-      <div className="row">
-        <div className="col-13 col-md-3 pb-3">
-          <ListGroup
-            items={this.state.genres}
-            selectedItem={this.state.selectedGenre}
-            onItemSelect={this.handleGenreSelect}
-          />
-        </div>
-        <div className="col">
-          <div style={{ marginBottom: "12px" }}>
-            <TextField
-              id="standard-helperText"
-              label="Search"
-              variant="standard"
-              type="search"
-              defaultValue={searchQuery}
-              onChange={this.handleSearch}
-              style={{ width: "80%" }}
-              className="pb-2"
-            />
-            {user && (
-              <Link
-                to="/movies/new"
-                style={{
-                  marginBottom: 20,
-                  textDecoration: "none",
-                  width: "20%",
-                }}
-              >
-                <Button variant="contained" color="primary" size="medium">
-                  <span style={{ fontWeight: "bolder", borderRadius: "20px" }}>
-                    Add New Movie
-                  </span>
-                </Button>
-              </Link>
-            )}
-          </div>
-          <p>Showing {totalCount} movies in the database.</p>
-          {/* <SearchBox value={searchQuery} onChange={this.handleSearch} /> */}
-          {/* Need to work on above shit */}
-          <MoviesTable
-            movies={movies}
-            sortColumn={sortColumn}
-            onLike={this.handleLike}
-            onDelete={this.handleDelete}
-            onSort={this.handleSort}
-          />
-          {/* <Pagination
-            itemsCount={totalCount}
-            pageSize={pageSize}
-            currentPage={currentPage}
-            onPageChange={this.handlePageChange}
-          /> */}
-          <Pagination
-            count={Math.ceil(totalCount / pageSize)}
-            page={currentPage}
-            onChange={this.handlePageChange}
-            color="primary"
-            sx={{ pt: 2, ".MuiPaginationItem-page": { outline: "none" } }}
-          />
-        </div>
+  return (
+    <div className="row">
+      <div className="col-13 col-md-3 pb-3">
+        <ListGroup
+          items={genres}
+          selectedItem={selectedGenre}
+          onItemSelect={handleGenreSelect}
+        />
       </div>
-    );
-  }
-}
+      <div className="col">
+        <div style={{ marginBottom: "12px" }}>
+          <TextField
+            id="standard-helperText"
+            label="Search"
+            variant="standard"
+            type="search"
+            defaultValue={searchQuery}
+            onChange={handleSearch}
+            style={{ width: "80%" }}
+            className="pb-2"
+          />
+          <Link
+            to="/movies/new"
+            style={{
+              marginBottom: 20,
+              textDecoration: "none",
+              width: "20%",
+            }}
+          >
+            <Button variant="contained" color="primary" size="medium">
+              <span style={{ fontWeight: "bolder", borderRadius: "20px" }}>
+                Add New Movie
+              </span>
+            </Button>
+          </Link>
+        </div>
+        <p>Showing {totalCount} movies in the database.</p>
+        <MoviesTable
+          movies={moviesToShow}
+          sortColumn={sortColumn}
+          onLike={handleLike}
+          onDelete={handleDelete}
+          onSort={handleSort}
+        />
+        <Pagination
+          count={Math.ceil(totalCount / pageSize)}
+          page={currentPage}
+          onChange={handlePageChange}
+          color="primary"
+          sx={{ pt: 2, ".MuiPaginationItem-page": { outline: "none" } }}
+        />
+      </div>
+      {showConfirmation && (
+        <Confirmation
+          open={showConfirmation}
+          onConfirmation={handleConfirmation}
+          handleClose={handleCancelConfirmation}
+          title={`Deleting "${movieToDelete.title}"`}
+          confirmColor="error"
+        >
+          {`Please confirm to delete this Movie.`}
+        </Confirmation>
+      )}
+    </div>
+  );
+};
 
 export default Movies;
