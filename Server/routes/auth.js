@@ -10,27 +10,20 @@ const asyncMiddleware = require("../middleware/async");
 
 const router = express.Router();
 
-router.post(
-  "/",
-  asyncMiddleware(async (req, res) => {
-    const { error } = validate(req.body);
-    if (error) return res.status(400).send(error.details[0].message);
+router.post("/", async (req, res) => {
+  const { error } = validate(req.body);
+  if (error) return res.status(400).send(error.details[0].message);
 
-    let user = await User.findOne({ email: req.body.email });
-    if (!user) return res.status(400).send("Invalid Email or Password.");
+  let user = await User.findOne({ email: req.body.email });
+  if (!user) return res.status(400).send("Invalid Email or Password.");
 
-    const validPassword = await bcrypt.compare(
-      req.body.password,
-      user.password
-    );
-    if (!validPassword)
-      return res.status(400).send("Invalid Email or Password.");
+  const validPassword = await bcrypt.compare(req.body.password, user.password);
+  if (!validPassword) return res.status(400).send("Invalid Email or Password.");
 
-    const token = user.generateAuthToken();
+  const token = user.generateAuthToken();
 
-    res.send(token);
-  })
-);
+  res.send(token);
+});
 function validate(req) {
   const schema = {
     email: Joi.string().min(3).max(150).required().email(),

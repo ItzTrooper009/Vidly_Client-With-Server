@@ -1,1 +1,4 @@
 /node_modules
+/uncaughtExceptions.log
+/unhandledRejections.log
+/logfile.log

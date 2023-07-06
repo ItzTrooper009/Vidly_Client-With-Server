@@ -1,4 +1,7 @@
 console.clear();
+require("express-async-errors");
+const winston = require("winston");
+require("winston-mongodb");
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -10,8 +13,43 @@ const users = require("./routes/users");
 const auth = require("./routes/auth");
 const config = require("config");
 const error = require("./middleware/error");
+const { constant } = require("lodash");
 const app = express();
 app.use(cors());
+
+winston.add(new winston.transports.File({ filename: "logfile.log" }));
+
+process.on("uncaughtException", (ex) => {
+  winston.error(ex.name, ex);
+  setTimeout(() => {
+    process.exit(1);
+  }, 1000); // Delay of 1 second (adjust as needed)
+});
+
+process.on("unhandledRejection", (ex) => {
+  winston.error(ex.name, ex);
+  setTimeout(() => {
+    process.exit(1);
+  }, 1000); // Delay of 1 second (adjust as needed)
+});
+
+// winston.createLogger({
+//   exceptionHandlers: [
+//     new winston.transports.File({ filename: "uncaughtExceptions.log" }),
+//   ],
+//   rejectionHandlers: [
+//     new winston.transports.File({ filename: "unhandledRejections.log" }),
+//   ],
+// });
+
+// throw new Error("Uncaught Exception");
+// const p = Promise.reject(new Error("Uncaught Exception Promise"));
+
+// p.then(() => {
+//   console.log("Success");
+// }).catch(() => {
+//   console.log("Rejected ");
+// });
 
 if (!config.get("jwtPrivateKey")) {
   console.error("FATAL ERROR: jwtPrivateKey not found...");
@@ -21,7 +59,7 @@ if (!config.get("jwtPrivateKey")) {
 mongoose
   .connect("mongodb://localhost/Vidly")
   .then(() => console.log("Connected to database..."))
-  .catch((err) => console.log("Not connected with Database...", err.message));
+  .catch((err) => winston.error(err.name, err));
 
 app.use(express.json());
 app.use("/api/genres", genres);
