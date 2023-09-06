@@ -12,14 +12,14 @@ module.exports = function () {
     winston.error(ex.name, ex);
     setTimeout(() => {
       process.exit(1);
-    }, 1000); // Delay of 1 second (adjust as needed)
+    }, 1000); // Delay of 1 second
   });
 
   process.on("unhandledRejection", (ex) => {
     winston.error(ex.name, ex);
     setTimeout(() => {
       process.exit(1);
-    }, 1000); // Delay of 1 second (adjust as needed)
+    }, 1000); // Delay of 1 second
   });
 
   // winston.createLogger({
